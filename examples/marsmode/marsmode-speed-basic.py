@@ -1,5 +1,6 @@
 
-# marsmode-mediavolume-basic
+# marsmode-speed-basic
+# - adjusts AP max speed down then up
 
 import binascii
 import time
