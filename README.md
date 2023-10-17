@@ -3,7 +3,7 @@
 ![panda tests](https://github.com/commaai/panda/workflows/tests/badge.svg)
 ![panda drivers](https://github.com/commaai/panda/workflows/drivers/badge.svg)
 
-[panda](http://github.com/commaai/panda) is the nicest universal car interface ever.
+[panda](http://github.com/commaai/panda) is the nicest universal car interface ever. We've added some example Tesla scripts!
 
 <a href="https://comma.ai/shop/products/panda-obd-ii-dongle"><img src="https://github.com/commaai/panda/blob/master/panda.png?raw=true"></a>
 
@@ -24,7 +24,7 @@ brew install python3 dfu-util gcc@13
 
 Clone panda repository:
 ``` bash
-git clone https://github.com/commaai/panda.git
+git clone https://github.com/spleck/panda.git
 cd panda
 ```
 
@@ -35,7 +35,7 @@ pip install -r requirements.txt
 
 Install library:
 ``` bash
-python setup.py install
+sudo python setup.py install
 ```
 
 See [the Panda class](https://github.com/commaai/panda/blob/master/python/__init__.py) for how to interact with the panda.
