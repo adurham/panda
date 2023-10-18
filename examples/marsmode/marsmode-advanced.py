@@ -48,7 +48,9 @@ while True:
                     p.can_send(0x3c2,b"\x29\x55\x01\x00\x00\x00\x00\x00",0) # vol up
                     time.sleep(0.5)
 
-                    p.set_safety_mode(Panda.SAFETY_SILENT)
+
+                    if mode_enabled == 0:
+                        p.set_safety_mode(Panda.SAFETY_SILENT)
 
                 # now standard tickle when enabled
                 if mode_enabled == 1:
