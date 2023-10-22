@@ -158,4 +158,12 @@ while True:
     except Exception as e:
         print("Exception caught ",e)
         time.sleep(1.2)
-            
+
+        # reset panda device or crash out for libusb
+        p = Panda()
+
+        p.set_can_speed_kbps(0,500)
+        if mode_enabled == 1:
+            p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
+        else:
+            p.set_safety_mode(Panda.SAFETY_SILENT)

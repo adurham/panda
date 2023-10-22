@@ -26,4 +26,10 @@ while True:
 					step_count = 0
 	except Exception as e:
 		print("Exception caught ",e)
-		time.sleep(3.2)
+		time.sleep(1.2)"
+
+		# reset panda device or crash out for libusb
+		p = Panda()
+
+		p.set_can_speed_kbps(0,500)
+		p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
