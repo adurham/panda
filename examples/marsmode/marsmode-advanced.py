@@ -22,6 +22,9 @@ mode_enabled = 1
 mode_signal = 0
 boot_init = 0
 parked = 0
+exception_count = 0
+last_p_ts = 0
+last_d_ts = 0
 
 last_lt = 0
 last_rt = 0
@@ -33,6 +36,9 @@ while True:
         can_data = p.can_recv()
         for ev_id, _, ev_data, _ in can_data:
             if ev_id == 0x528: # tesla clock tick 1s
+                # can't be in the middle of a usb error if we are getting data, reset the count
+                exception_count = 0
+
                 # display startup sequence on first tick detect after boot
                 if boot_init == 0:
                     boot_init = 1
@@ -47,7 +53,6 @@ while True:
                     time.sleep(0.5)
                     p.can_send(0x3c2,b"\x29\x55\x01\x00\x00\x00\x00\x00",0) # vol up
                     time.sleep(0.5)
-
 
                     if mode_enabled == 0:
                         p.set_safety_mode(Panda.SAFETY_SILENT)
@@ -140,30 +145,36 @@ while True:
 
             # check for putting vehicle in park, auto-disable
             elif ev_id == 0x118:
-                # print("gear ",ev_data[2]," ",bin(ev_data[2]))
-                if ev_data[2]==50:
-                    if parked == 0:
-                        parked = 1
-                        print("Changing to PARK mode")
-                        if mode_enabled == 1:
-                            p.set_safety_mode(Panda.SAFETY_SILENT)
+                #print("gear ",ev_data[2]," ",bin(ev_data[2]))
+                if ev_data[2]<=50 or ev_data[2]>=240:
+                    last_p_ts = time.time()
                 else:
-                    if parked == 1:
-                        parked = 0
-                        print("Changing to NON-PARK mode")
-                        if mode_enabled == 1:
-                            p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
+                    last_d_ts = time.time()
+
+                if parked == 0 and (last_p_ts > last_d_ts):
+                    parked = 1
+                    print("Changing to PARK mode")
+                    if mode_enabled == 1:
+                        p.set_safety_mode(Panda.SAFETY_SILENT)
+                if parked == 1 and (last_d_ts > last_p_ts):
+                    parked = 0
+                    print("Changing to NON-PARK mode "+str(ev_data[2]))
+                    if mode_enabled == 1:
+                        p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
 
     
     except Exception as e:
         print("Exception caught ",e)
-        time.sleep(1.2)
+        time.sleep(2.1)
+        exception_count = exception_count + 1
 
-        # reset panda device or crash out for libusb
-        p = Panda()
+        if exception_count > 5:
+            # reconnect panda
+            p = Panda()
 
-        p.set_can_speed_kbps(0,500)
-        if mode_enabled == 1:
-            p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
-        else:
-            p.set_safety_mode(Panda.SAFETY_SILENT)
+            p.set_can_speed_kbps(0,500)
+            if mode_enabled == 1:
+                p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
+            else:
+                p.set_safety_mode(Panda.SAFETY_SILENT)
+            
