@@ -162,7 +162,6 @@ while True:
                     if mode_enabled == 1:
                         p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
 
-    
     except Exception as e:
         print("Exception caught ",e)
         time.sleep(2.1)
@@ -173,8 +172,7 @@ while True:
             p = Panda()
 
             p.set_can_speed_kbps(0,500)
-            if mode_enabled == 1:
+            if mode_enabled == 1 and parked == 0:
                 p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
             else:
                 p.set_safety_mode(Panda.SAFETY_SILENT)
-            
