@@ -15,7 +15,7 @@ def replay_drive(lr, safety_mode, param, alternative_experience, segment=False):
   safety.set_alternative_experience(alternative_experience)
 
   if segment:
-    init_segment(safety, lr, safety_mode)
+    init_segment(safety, lr, safety_mode, param)
     lr.reset()
 
   rx_tot, rx_invalid, tx_tot, tx_blocked, tx_controls, tx_controls_blocked = 0, 0, 0, 0, 0, 0
@@ -35,7 +35,7 @@ def replay_drive(lr, safety_mode, param, alternative_experience, segment=False):
       safety_tick_rx_invalid |= not safety.addr_checks_valid() or safety_tick_rx_invalid
 
     if msg.which() == 'sendcan':
-     for canmsg in msg.sendcan:
+      for canmsg in msg.sendcan:
         to_send = package_can_msg(canmsg)
         sent = safety.safety_tx_hook(to_send)
         if not sent:
@@ -72,8 +72,8 @@ def replay_drive(lr, safety_mode, param, alternative_experience, segment=False):
   return tx_controls_blocked == 0 and rx_invalid == 0 and not safety_tick_rx_invalid
 
 if __name__ == "__main__":
-  from tools.lib.route import Route, SegmentName
-  from tools.lib.logreader import MultiLogIterator  # pylint: disable=import-error
+  from openpilot.tools.lib.route import Route, SegmentName
+  from openpilot.tools.lib.logreader import MultiLogIterator  # pylint: disable=import-error
 
   parser = argparse.ArgumentParser(description="Replay CAN messages from a route or segment through a safety mode",
                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
