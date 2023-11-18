@@ -15,6 +15,7 @@ from panda import Panda
 p = Panda()
 
 p.set_can_speed_kbps(0,500)
+p.set_can_speed_kbps(1,500)
 p.set_safety_mode(Panda.SAFETY_SILENT)
 
 step_count = 0
