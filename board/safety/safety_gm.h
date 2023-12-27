@@ -27,6 +27,11 @@ const LongitudinalLimits *gm_long_limits;
 
 const int GM_STANDSTILL_THRSLD = 10;  // 0.311kph
 
+// panda interceptor threshold needs to be equivalent to openpilot threshold to avoid controls mismatches
+// If thresholds are mismatched then it is possible for panda to see the gas fall and rise while openpilot is in the pre-enabled state
+const int GM_GAS_INTERCEPTOR_THRESHOLD = 515;
+#define GM_GET_INTERCEPTOR(msg) (((GET_BYTE((msg), 0) << 8) + GET_BYTE((msg), 1) + (GET_BYTE((msg), 2) << 8) + GET_BYTE((msg), 3)) / 2U) // avg between 2 tracks
+
 const CanMsg GM_ASCM_TX_MSGS[] = {{0x180, 0, 4}, {0x409, 0, 7}, {0x40A, 0, 7}, {0x2CB, 0, 8}, {0x370, 0, 6},  // pt bus
                                   {0xA1, 1, 7}, {0x306, 1, 8}, {0x308, 1, 7}, {0x310, 1, 2},   // obs bus
                                   {0x315, 2, 5},  // ch bus
@@ -37,6 +42,9 @@ const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4},  // pt bus
 
 const CanMsg GM_CAM_LONG_TX_MSGS[] = {{0x180, 0, 4}, {0x315, 0, 5}, {0x2CB, 0, 8}, {0x370, 0, 6},  // pt bus
                                       {0x184, 2, 8}};  // camera bus
+
+const CanMsg GM_CAM_INTERCEPTOR_TX_MSGS[] = {{0x180, 0, 4}, {0x315, 0, 5}, {0x2CB, 0, 8}, {0x370, 0, 6}, {0x200, 0, 6},  // pt bus
+                                             {0x184, 2, 8}, {0x1E1, 2, 7}};  // camera bus
 
 // TODO: do checksum and counter checks. Add correct timestep, 0.1s for now.
 RxCheck gm_rx_checks[] = {
@@ -52,6 +60,7 @@ RxCheck gm_rx_checks[] = {
 
 const uint16_t GM_PARAM_HW_CAM = 1;
 const uint16_t GM_PARAM_HW_CAM_LONG = 2;
+const uint16_t GM_PARAM_GAS_INTERCEPTOR = 4;
 
 enum {
   GM_BTN_UNPRESS = 1,
@@ -112,7 +121,9 @@ static void gm_rx_hook(CANPacket_t *to_push) {
     }
 
     if (addr == 0x1C4) {
-      gas_pressed = GET_BYTE(to_push, 5) != 0U;
+      if (!enable_gas_interceptor) {
+        gas_pressed = GET_BYTE(to_push, 5) != 0U;
+      }
 
       // enter controls on rising edge of ACC, exit controls when ACC off
       if (gm_pcm_cruise) {
@@ -123,6 +134,13 @@ static void gm_rx_hook(CANPacket_t *to_push) {
 
     if (addr == 0xBD) {
       regen_braking = (GET_BYTE(to_push, 0) >> 4) != 0U;
+    }
+
+    // Pedal Interceptor
+    if ((addr == 0x201) && enable_gas_interceptor) {
+      int gas_interceptor = GM_GET_INTERCEPTOR(to_push);
+      gas_pressed = gas_interceptor > GM_GAS_INTERCEPTOR_THRESHOLD;
+      gas_interceptor_prev = gas_interceptor;
     }
 
     bool stock_ecu_detected = (addr == 0x180);  // ASCMLKASteeringCmd
@@ -160,6 +178,13 @@ static bool gm_tx_hook(CANPacket_t *to_send) {
     }
   }
 
+  // GAS: safety check (interceptor)
+  if (addr == 0x200) {
+    if (longitudinal_interceptor_checks(to_send)) {
+      tx = 0;
+    }
+  }
+
   // GAS/REGEN: safety check
   if (addr == 0x2CB) {
     bool apply = GET_BIT(to_send, 0U) != 0U;
@@ -176,10 +201,10 @@ static bool gm_tx_hook(CANPacket_t *to_send) {
   }
 
   // BUTTONS: used for resume spamming and cruise cancellation with stock longitudinal
-  if ((addr == 0x1E1) && gm_pcm_cruise) {
+  if ((addr == 0x1E1) && (gm_pcm_cruise || enable_gas_interceptor)) {
     int button = (GET_BYTE(to_send, 5) >> 4) & 0x7U;
 
-    bool allowed_cancel = (button == 6) && cruise_engaged_prev;
+    bool allowed_cancel = (button == GM_BTN_CANCEL) && cruise_engaged_prev;
     if (!allowed_cancel) {
       tx = false;
     }
@@ -224,6 +249,7 @@ static safety_config gm_init(uint16_t param) {
   } else {
   }
 
+  enable_gas_interceptor = GET_FLAG(param, GM_PARAM_GAS_INTERCEPTOR);
 #ifdef ALLOW_DEBUG
   gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG);
 #endif
@@ -231,7 +257,13 @@ static safety_config gm_init(uint16_t param) {
 
   safety_config ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_ASCM_TX_MSGS);
   if (gm_hw == GM_CAM) {
-    ret = gm_cam_long ? BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_LONG_TX_MSGS) : BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_TX_MSGS);
+    if (enable_gas_interceptor) {
+      ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_INTERCEPTOR_TX_MSGS);
+    } else if (gm_cam_long) {
+      ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_LONG_TX_MSGS);
+    } else {
+      ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_TX_MSGS);
+    }
   }
   return ret;
 }

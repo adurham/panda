@@ -225,5 +225,25 @@ class TestGmCameraLongitudinalSafety(GmLongitudinalBase, TestGmCameraSafetyBase)
     self.safety.init_tests()
 
 
+class TestGmCameraGasInterceptorSafety(common.GasInterceptorSafetyTest, TestGmCameraLongitudinalSafety):
+  INTERCEPTOR_THRESHOLD = 515
+
+  def setUp(self):
+    self.packer = CANPackerPanda("gm_global_a_powertrain_generated")
+    self.packer_chassis = CANPackerPanda("gm_global_a_chassis")
+    self.safety = libpanda_py.libpanda
+    self.safety.set_safety_hooks(Panda.SAFETY_GM, Panda.FLAG_GM_HW_CAM | Panda.FLAG_GM_HW_CAM_LONG | Panda.FLAG_GM_GAS_INTERCEPTOR)
+    self.safety.init_tests()
+
+  def _interceptor_user_gas(self, gas):
+    # GM DBC file scales the GAS_SENSOR values
+    to_send = common.make_msg(0, 0x201, 6)
+    to_send[0].data[0] = (gas & 0xFF00) >> 8
+    to_send[0].data[1] = gas & 0xFF
+    to_send[0].data[2] = (gas & 0xFF00) >> 8
+    to_send[0].data[3] = gas & 0xFF
+    return to_send
+
+
 if __name__ == "__main__":
   unittest.main()
