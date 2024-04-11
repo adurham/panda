@@ -92,7 +92,7 @@ sleep 1 && echo DONE && sleep 1
 
 # run marsmode-active.sh to link default active script
 echo -n 'Setting default MarsMode script to marsmode-mediavolume-basic... '
-$BIND/marsmode-active.sh $BIND/marsmode-mediavolume-basic.py >/dev/null
+~/panda/examples/marsmode/marsmode-active.sh ~/panda/examples/marsmode/marsmode-mediavolume-basic.py >/dev/null
 sleep 1 && echo OK && sleep 1
 
 # add boot config to enable single cable for power+data
@@ -103,5 +103,5 @@ echo '----------------------------------------------------------------------'
 echo ' '
 echo '        ** MarsMode install complete. Ready to GO! **'
 echo ' '
-echo "  To adjust startup script: $BIND/marsmode-active.sh <script>"
+echo "  To adjust startup script: cd ~/panda/examples/marsmode/ and run ./marsmode-active.sh <script>"
 echo ' ' && sleep 1
