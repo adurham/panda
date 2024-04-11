@@ -1,4 +1,19 @@
 
+# Mars Mode Scripts
+
+You will find the sample mars mode scripts in [examples/marsmode](https://github.com/spleck/panda/examples/marsmode/)
+
+These are scripts to demonstrate simulating button inputs via CAN bus signals in your Tesla Model 3, Y, and newer S and X.
+
+# Bill of Materials
+
+1x Raspberry Pi4+Case
+1x USB-C to USB-A Cable for usage
+1x USB-A to USB-A Cable for flashing firmware (or flash in car powered by ODB)
+1x MicroSD Memory Card
+1x [White Comma Panda](https://www.comma.ai/shop/panda)
+1x [ODB Adapter Cable](https://enhauto.com/product/tesla-gen1-obd-cable)
+
 # Raspberry Pi4 + PiOS + White Comma Panda Install
 
 ## Operating System image onto MicroSD Card
@@ -103,7 +118,7 @@ cd ~/panda/examples/marsmode
 
 ./marsmode-active.sh marsmode-mediavolume-basic.py
 
-## shut down and move to car, ALL DONE! 
+# ALL DONE! Shut down and move to car
 
 sudo halt
 
