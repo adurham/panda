@@ -103,7 +103,7 @@ echo dtoverlay=dwc2,dr_mode=host | sudo tee -a /boot/firmware/config.txt
 
 cd ~/panda/examples/marsmode
 
-./marsmode-active.sh marsmode-volume-simple.py
+./marsmode-active.sh marsmode-mediavolume-basic.py
 
 # shut down and move to car, ALL DONE!
 
