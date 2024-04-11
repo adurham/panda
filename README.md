@@ -14,7 +14,7 @@ panda speaks CAN, CAN FD, LIN, and GMLAN. panda supports [STM32F205](https://www
 Setup dependencies:
 ```bash
 # Ubuntu
-sudo apt-get install dfu-util gcc-arm-none-eabi python3-pip libffi-dev git
+sudo apt-get install dfu-util gcc-arm-none-eabi python3-pip libffi-dev git scons screen
 ```
 ```bash
 # macOS
