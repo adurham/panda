@@ -37,7 +37,9 @@ Login via ssh from remote or using keyboard and mouse locally
 
 curl <https://spleck.net/mars-mode-install> | bash
 
-That's it. (Good luck!)
+That's it, good luck! If you run into trouble, or just want to see more detail as it works:
+
+curl <https://spleck.net/mars-mode-install> | V=1 bash
 
 # Manual PiOS / Debian / Ubuntu Install Steps
 
