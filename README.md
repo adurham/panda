@@ -10,7 +10,7 @@ You will find the sample mars mode scripts in [examples/marsmode](https://github
 
 * 1x Raspberry Pi4+Case
 * 1x USB-C to USB-A Cable for usage
-* 1x USB-A to USB-A Cable for flashing firmware (or flash in car powered by ODB)
+* 1x [USB-A to USB-A Cable](https://a.co/d/4NF5Dub) for flashing firmware (or flash in car powered by ODB)
 * 1x MicroSD Memory Card
 * 1x [White Comma Panda](https://www.comma.ai/shop/panda)
 * 1x [ODB Adapter Cable](https://enhauto.com/product/tesla-gen1-obd-cable)
