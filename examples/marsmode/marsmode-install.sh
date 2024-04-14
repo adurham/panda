@@ -41,10 +41,10 @@ echo -n "Installing system dependencies... "
 if [ $V == 1 ]; then
 	echo " "; echo " "
 	sudo apt-get update
-	sudo apt-get install -y dfu-util gcc-arm-none-eabi python3-pip libffi-dev git scons screen
+	sudo apt-get install -y dfu-util gcc-arm-none-eabi python3-pip python3-venv libffi-dev git scons screen
 else
 	sudo apt-get update >/dev/null 2>&1
-	sudo apt-get install -y dfu-util gcc-arm-none-eabi python3-pip libffi-dev git scons screen >/dev/null 2>&1
+	sudo apt-get install -y dfu-util gcc-arm-none-eabi python3-pip python3-venv libffi-dev git scons screen >/dev/null 2>&1
 	sleep 1 && echo "OK" && sleep 1
 fi
 
@@ -169,8 +169,13 @@ else
 	sleep 1 && echo OK && sleep 1
 fi
 
-# add boot config to enable single cable for power+data
-echo dtoverlay=dwc2,dr_mode=host | sudo tee -a /boot/firmware/config.txt >/dev/null
+# add boot config to enable single cable for power+data for pi4
+if [ -f /boot/firmware/config.txt ]; then
+	cnt=`grep dr_mode=host /boot/firmware/config.txt | wc -l`
+	if [ $cnt -eq 0 ]; then
+		echo dtoverlay=dwc2,dr_mode=host | sudo tee -a /boot/firmware/config.txt >/dev/null
+	fi
+fi
 
 # done
 echo ' '
