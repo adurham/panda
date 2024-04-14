@@ -117,10 +117,12 @@ while True:
     
                     # check for mode swap with right thumb button double click
                     # elif ev_data.hex() == "2965000000000000":
+                    # NOT IMPLEMENTED
+
                     # check for mode swap with left thumb tilt left double click
                     # elif evd == "2995000000000000":
                     elif ev_data[0]==0x29 and ev_data[1]==0x95:
-                        print("- rt detected")
+                        print("- ltt detected")
                         step_count = 0
                         delta_rt = time.time() - last_rt
                         if delta_rt < 0.75 and delta_rt > 0.20:
@@ -174,6 +176,7 @@ while True:
             p = Panda()
 
             p.set_can_speed_kbps(0,500)
+            p.set_can_speed_kbps(1,500)
             if mode_enabled == 1 and parked == 0:
                 p.set_safety_mode(Panda.SAFETY_ALLOUTPUT)
             else:
