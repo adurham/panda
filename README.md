@@ -23,6 +23,8 @@ Go to [raspberrypi.com](http://raspberrypi.com), click Software and download Ras
 
 Open Imager, Select Pi4, Select Other -> Raspberry PiOS Lite (64-bit), Select your Memory Card and Click Next
 
+Note: This was tested and confirmed working with Pi3b + PiOS (Legacy) 64-bit Lite as well
+
 OS Customization Settings: hostname, user+password, wireless, and locale
 
 Click Write and Confirm Overwriting All Files on the memory card
