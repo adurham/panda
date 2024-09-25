@@ -91,8 +91,8 @@ int comms_control_handler(ControlPacket_t *req, uint8_t *resp) {
 // ***************************** can port *****************************
 
 // addresses to be used on CAN
-#define CAN_GAS_INPUT  0x200
-#define CAN_GAS_OUTPUT 0x201U
+#define CAN_GAS_INPUT  0x210
+#define CAN_GAS_OUTPUT 0x211U
 #define CAN_GAS_SIZE 6
 #define COUNTER_CYCLE 0xFU
 
@@ -105,7 +105,7 @@ void CAN1_TX_IRQ_Handler(void) {
 uint16_t gas_set_0 = 0;
 uint16_t gas_set_1 = 0;
 
-#define MAX_TIMEOUT 10U
+#define MAX_TIMEOUT 20U
 uint32_t timeout = 0;
 uint32_t current_index = 0;
 
