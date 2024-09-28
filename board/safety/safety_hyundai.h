@@ -39,9 +39,17 @@ const CanMsg HYUNDAI_TX_MSGS[] = {
 
 const CanMsg HYUNDAI_INTERCEPTOR_TX_MSGS[] = {
   {0x340, 0, 8}, // LKAS11 Bus 0
-  {0x4F1, 0, 4}, // CLU11 Bus 0
+  // {0x389, 0, 8}, // SCC14 Bus 0
+  // {0x38D, 0, 8}, // FCA11 Bus 0
+  // {0x420, 0, 8}, // SCC11 Bus 0
+  // {0x421, 0, 8}, // SCC12 Bus 0
+  // {0x483, 0, 8}, // FCA12 Bus 0
   {0x485, 0, 4}, // LFAHDA_MFC Bus 0
+  // {0x4A2, 0, 2}, // FRT_RADAR11 Bus 0
+  {0x4F1, 0, 4}, // CLU11 Bus 0
+  // {0x50A, 0, 8}, // SCC13 Bus 0
   {0x700, 0, 6}, // Interceptor Bus 0
+  // {0x7D0, 0, 8}, // radar UDS TX addr Bus 0 (for radar disable)
 };
 
 const CanMsg HYUNDAI_LONG_TX_MSGS[] = {
@@ -102,9 +110,19 @@ RxCheck hyundai_long_rx_checks[] = {
 };
 
 RxCheck hyundai_interceptor_rx_checks[] = {
-  HYUNDAI_COMMON_RX_CHECKS(false)
+  // EMS
+  {.msg = {{0x260, 0, 8, .check_checksum = true, .max_counter = 3U, .frequency = 100U},
+           {0x371, 0, 8, .frequency = 100U}, { 0 }}},
+  // LVR
+  {.msg = {{0x367, 0, 8, .frequency = 100U},
+           {0x595, 0, 8, .frequency = 10U}, { 0 }}},
+  // ABS
+  {.msg = {{0x386, 0, 8, .check_checksum = true, .max_counter = 15U, .frequency = 100U}, { 0 }, { 0 }}},
+  // ESC
+  {.msg = {{0x394, 0, 8, .check_checksum = true, .max_counter = 7U, .frequency = 100U}, { 0 }, { 0 }}},
   // Use CLU11 (buttons) to manage controls allowed instead of SCC cruise state
   {.msg = {{0x4F1, 0, 4, .check_checksum = false, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}},
+  // Gas Interceptor
   {.msg = {{0x701, 0, 6, .check_checksum = false, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}},
 };
 
@@ -209,6 +227,7 @@ static uint32_t hyundai_compute_checksum(const CANPacket_t *to_push) {
 static void hyundai_rx_hook(const CANPacket_t *to_push) {
   int bus = GET_BUS(to_push);
   int addr = GET_ADDR(to_push);
+  int len = GET_LEN(to_push);
 
   // SCC12 is on bus 2 for camera-based SCC cars, bus 0 on all others
   if (((bus == 0) && !hyundai_camera_scc) || ((bus == 2) && hyundai_camera_scc)) {
@@ -312,14 +331,13 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
   }
 
   // Elantra N with custom pedal stuff
-  if (bus == 0) {
-    // Pedal
-    if (addr == 0x701 && enable_gas_interceptor) {
-      int gas_interceptor = HYUNDAI_GET_INTERCEPTOR(to_push);
-      gas_pressed = gas_interceptor > HYUNDAI_GAS_INTERCEPTOR_THRESHOLD;
-      gas_interceptor_prev = gas_interceptor;
-    }
+  // Pedal
+  if ((addr == 0x701) && (len == 6) && enable_gas_interceptor) {
+    int gas_interceptor = HYUNDAI_GET_INTERCEPTOR(to_push);
+    gas_pressed = gas_interceptor > HYUNDAI_GAS_INTERCEPTOR_THRESHOLD;
+    gas_interceptor_prev = gas_interceptor;
   }
+
 }
 
 static bool hyundai_tx_hook(const CANPacket_t *to_send) {
