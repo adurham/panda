@@ -25,10 +25,23 @@ const LongitudinalLimits HYUNDAI_LONG_LIMITS = {
   .min_accel = -350,  // 1/100 m/s2
 };
 
+// panda interceptor threshold needs to be equivalent to openpilot threshold to avoid controls mismatches
+// If thresholds are mismatched then it is possible for panda to see the gas fall and rise while openpilot is in the pre-enabled state
+// Threshold calculated from DBC gains: round(((83.3 / 0.253984064) + (83.3 / 0.126992032)) / 2) = 492
+const int HYUNDAI_GAS_INTERCEPTOR_THRESHOLD = 492;
+#define HYUNDAI_GET_INTERCEPTOR(msg) (((GET_BYTE((msg), 0) << 8) + GET_BYTE((msg), 1) + (GET_BYTE((msg), 2) << 8) + GET_BYTE((msg), 3)) / 2U)  // avg between 2 tracks
+
 const CanMsg HYUNDAI_TX_MSGS[] = {
   {0x340, 0, 8}, // LKAS11 Bus 0
   {0x4F1, 0, 4}, // CLU11 Bus 0
   {0x485, 0, 4}, // LFAHDA_MFC Bus 0
+};
+
+const CanMsg HYUNDAI_INTERCEPTOR_TX_MSGS[] = {
+  {0x340, 0, 8}, // LKAS11 Bus 0
+  {0x4F1, 0, 4}, // CLU11 Bus 0
+  {0x485, 0, 4}, // LFAHDA_MFC Bus 0
+  {0x700, 0, 6}, // Interceptor Bus 0
 };
 
 const CanMsg HYUNDAI_LONG_TX_MSGS[] = {
@@ -88,6 +101,13 @@ RxCheck hyundai_long_rx_checks[] = {
   {.msg = {{0x4F1, 0, 4, .check_checksum = false, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}},
 };
 
+RxCheck hyundai_interceptor_rx_checks[] = {
+  HYUNDAI_COMMON_RX_CHECKS(false)
+  // Use CLU11 (buttons) to manage controls allowed instead of SCC cruise state
+  {.msg = {{0x4F1, 0, 4, .check_checksum = false, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}},
+  {.msg = {{0x701, 0, 6, .check_checksum = false, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}},
+};
+
 // older hyundai models have less checks due to missing counters and checksums
 RxCheck hyundai_legacy_rx_checks[] = {
   HYUNDAI_COMMON_RX_CHECKS(true)
@@ -105,6 +125,7 @@ RxCheck hyundai_non_scc_addr_checks[] = {
 const int HYUNDAI_PARAM_LFA_BTN = 256;
 const int HYUNDAI_PARAM_ESCC = 512;
 const int HYUNDAI_PARAM_NON_SCC = 1024;
+const int HYUNDAI_PARAM_GAS_INTERCEPTOR = 4096;
 
 bool hyundai_legacy = false;
 bool hyundai_lfa_button = false;
@@ -113,22 +134,23 @@ bool hyundai_non_scc = false;
 
 
 static uint8_t hyundai_get_counter(const CANPacket_t *to_push) {
-  int addr = GET_ADDR(to_push);
-
-  uint8_t cnt = 0;
-  if (addr == 0x260) {
-    cnt = (GET_BYTE(to_push, 7) >> 4) & 0x3U;
-  } else if (addr == 0x386) {
-    cnt = ((GET_BYTE(to_push, 3) >> 6) << 2) | (GET_BYTE(to_push, 1) >> 6);
-  } else if (addr == 0x394) {
-    cnt = (GET_BYTE(to_push, 1) >> 5) & 0x7U;
-  } else if (addr == 0x421) {
-    cnt = GET_BYTE(to_push, 7) & 0xFU;
-  } else if (addr == 0x4F1) {
-    cnt = (GET_BYTE(to_push, 3) >> 4) & 0xFU;
-  } else {
-  }
-  return cnt;
+    int addr = GET_ADDR(to_push);
+    uint8_t cnt = 0;
+    if (addr == 0x701) {
+        cnt = GET_BYTE(to_push, 4) & 0x0FU;
+    } else if (addr == 0x260) {
+        cnt = (GET_BYTE(to_push, 7) >> 4) & 0x3U;
+    } else if (addr == 0x386) {
+        cnt = ((GET_BYTE(to_push, 3) >> 6) << 2) | (GET_BYTE(to_push, 1) >> 6);
+    } else if (addr == 0x394) {
+        cnt = (GET_BYTE(to_push, 1) >> 5) & 0x7U;
+    } else if (addr == 0x421) {
+        cnt = GET_BYTE(to_push, 7) & 0xFU;
+    } else if (addr == 0x4F1) {
+        cnt = (GET_BYTE(to_push, 3) >> 4) & 0xFU;
+    } else {
+    }
+    return cnt;
 }
 
 static uint32_t hyundai_get_checksum(const CANPacket_t *to_push) {
@@ -288,6 +310,16 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
     }
     generic_rx_checks(stock_ecu_detected);
   }
+
+  // Elantra N with custom pedal stuff
+  if (bus == 0) {
+    // Pedal
+    if (addr == 0x701 && enable_gas_interceptor) {
+      int gas_interceptor = HYUNDAI_GET_INTERCEPTOR(to_push);
+      gas_pressed = gas_interceptor > HYUNDAI_GAS_INTERCEPTOR_THRESHOLD;
+      gas_interceptor_prev = gas_interceptor;
+    }
+  }
 }
 
 static bool hyundai_tx_hook(const CANPacket_t *to_send) {
@@ -357,6 +389,13 @@ static bool hyundai_tx_hook(const CANPacket_t *to_send) {
     }
   }
 
+  // GAS: safety check (interceptor)
+  if (addr == 0x700) {
+    if (longitudinal_interceptor_checks(to_send)) {
+      tx = false;
+    }
+  }
+
   return tx;
 }
 
@@ -389,9 +428,12 @@ static safety_config hyundai_init(uint16_t param) {
   hyundai_lfa_button = GET_FLAG(param, HYUNDAI_PARAM_LFA_BTN);
   hyundai_escc = GET_FLAG(param, HYUNDAI_PARAM_ESCC);
   hyundai_non_scc = GET_FLAG(param, HYUNDAI_PARAM_NON_SCC);
+  enable_gas_interceptor = GET_FLAG(param, HYUNDAI_PARAM_GAS_INTERCEPTOR);
 
   safety_config ret;
-  if (hyundai_longitudinal && hyundai_camera_scc) {
+  if (hyundai_longitudinal && enable_gas_interceptor) {
+    ret = BUILD_SAFETY_CFG(hyundai_interceptor_rx_checks,HYUNDAI_INTERCEPTOR_TX_MSGS);
+  } else if (hyundai_longitudinal && hyundai_camera_scc) {
     ret = BUILD_SAFETY_CFG(hyundai_cam_scc_rx_checks, HYUNDAI_CAMERA_SCC_LONG_TX_MSGS);
   } else if (hyundai_longitudinal) {
     ret = BUILD_SAFETY_CFG(hyundai_long_rx_checks, HYUNDAI_LONG_TX_MSGS);
